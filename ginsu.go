@@ -7,13 +7,13 @@ import (
 	"context"
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/bobg/oauther/v2"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
@@ -27,12 +27,12 @@ func main() {
 	ctx := context.Background()
 
 	var (
-		user      = flag.String("user", "", "Gmail user ID")
 		doImport  = flag.Bool("import", false, "import mode (more scanning)")
 		doInsert  = flag.Bool("insert", false, "insert mode (less scanning)")
+		user      = flag.String("user", "", "Gmail user ID")
 		credsFile = flag.String("creds", "creds.json", "path to credentials file")
-		tokenFile = flag.String("tokfile", "token.json", "token cache file")
-		token     = flag.String("tok", "", "oauth web token")
+		tokenFile = flag.String("token", "token.json", "token cache file")
+		code      = flag.String("code", "", "auth code")
 	)
 
 	flag.Parse()
@@ -40,7 +40,7 @@ func main() {
 	if *doImport && *doInsert {
 		log.Fatal("specify only one of -import and -insert")
 	}
-	if *doImport && *doInsert {
+	if !*doImport && !*doInsert {
 		log.Fatal("specify one of -import and -insert")
 	}
 	if *user == "" {
@@ -52,12 +52,9 @@ func main() {
 		log.Fatal(err)
 	}
 	tokSrc := oauther.NewWebTokenSrc(func(url string) (string, error) {
-		log.Printf("get a token at %s", url)
-		log.Printf("then rerun this program as %s -tok <the token>", strings.Join(os.Args, " "))
-		os.Exit(0)
-		return "", nil
+		return "", fmt.Errorf("get an auth code at %s, then rerun this program as %s -code <code>", url, strings.Join(os.Args, " "))
 	})
-	tokSrc = valTokSrc{token: *token, src: tokSrc}
+	tokSrc = oauther.NewCodeTokenSrc(tokSrc, *code)
 	tokSrc = oauther.NewFileCache(tokSrc, *tokenFile)
 	oauthClient, err := oauther.HTTPClient(ctx, creds, tokSrc, gmail.GmailInsertScope)
 	if err != nil {
@@ -95,16 +92,4 @@ func main() {
 	}
 
 	log.Printf("new message ID %s", msg.Id)
-}
-
-type valTokSrc struct {
-	token string
-	src   oauther.TokenSrc
-}
-
-func (v valTokSrc) Get(ctx context.Context, conf *oauth2.Config) (*oauth2.Token, error) {
-	if v.token != "" {
-		return conf.Exchange(ctx, v.token)
-	}
-	return v.src.Get(ctx, conf)
 }
