@@ -75,13 +75,17 @@ func main() {
 	raw := base64.URLEncoding.EncodeToString(inp)
 
 	var doer doer
+	inpMsg := &gmail.Message{
+		Raw:      raw,
+		LabelIds: []string{"INBOX", "UNREAD"},
+	}
 
 	if *doImport {
-		call := msvc.Import(*user, &gmail.Message{Raw: raw})
+		call := msvc.Import(*user, inpMsg)
 		call.InternalDateSource("dateHeader")
 		doer = call
 	} else {
-		call := msvc.Insert(*user, &gmail.Message{Raw: raw})
+		call := msvc.Insert(*user, inpMsg)
 		call.InternalDateSource("dateHeader")
 		doer = call
 	}
