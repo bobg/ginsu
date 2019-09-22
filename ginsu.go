@@ -7,13 +7,12 @@ import (
 	"context"
 	"encoding/base64"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/bobg/oauther/v2"
+	"github.com/bobg/oauther/v3"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
@@ -51,12 +50,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tokSrc := oauther.NewWebTokenSrc(func(url string) (string, error) {
-		return "", fmt.Errorf("get an auth code at %s, then rerun this program as %s -code <code>", url, strings.Join(os.Args, " "))
-	})
-	tokSrc = oauther.NewCodeTokenSrc(tokSrc, *code)
-	tokSrc = oauther.NewFileCache(tokSrc, *tokenFile)
-	oauthClient, err := oauther.HTTPClient(ctx, creds, tokSrc, gmail.GmailInsertScope)
+
+	oauthClient, err := oauther.Client(ctx, *tokenFile, *code, creds, gmail.GmailInsertScope)
+	if c, ok := err.(oauther.ErrNeedAuthCode); ok {
+		log.Fatalf("get auth code from %s, then rerun %s -code <code>", c.URL, strings.Join(os.Args, " "))
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
