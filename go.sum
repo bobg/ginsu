@@ -12,8 +12,14 @@ cloud.google.com/go/datastore v1.0.0/go.mod h1:LXYbyblFSglQ5pkeyhO+Qmw7ukd3C+pD7
 cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2kNxGRt3I=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/bobg/chanrw v1.0.0 h1:ELwUMkDlngwYaE36+PKaYbDPYxwa8I9Z+vca68au0N0=
+github.com/bobg/chanrw v1.0.0/go.mod h1:5XkzwRFot3ysCwfxy64EXarkeqS45kxaXS7JqP3L9CI=
+github.com/bobg/folder/v3 v3.0.4 h1:AGf1kw3d1BAsyan6liSER6OLBsOj2mwJK8BHWeqDoLk=
+github.com/bobg/folder/v3 v3.0.4/go.mod h1:NvNOeJSVxQ9jU9Xv482VRvytwcUMO+0QdmJPIiRHU7E=
 github.com/bobg/oauther/v3 v3.1.0 h1:R8sgbeqPnfix41OpxlsU0yPL7rP+DEAkMv9ncWUjlxg=
 github.com/bobg/oauther/v3 v3.1.0/go.mod h1:am3tmrqQPk7nVtHlkmWoECwclI77A5YlWplya7zlMKQ=
+github.com/bobg/uncompress v1.0.0 h1:XTPAyWHXDavJ0O6gyHGNWujhw7ouLkoxfI29WtqcfbM=
+github.com/bobg/uncompress v1.0.0/go.mod h1:TvrZB/6Ks2WnTuFrc2RY11NDlkoOxi0Pvcs+hIendbs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b h1:VKtxabqXZkF25pY9ekfRL6a582T4P37/31XEstQ5p58=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
@@ -108,6 +114,7 @@ golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2/go.mod h1:NqM8EUOU14njkJ3
 golang.org/x/text v0.3.2 h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/time v0.0.0-20181108054448-85acf8d2951c/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
+golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 h1:SvFZT6jyqRaOeXpc5h/JSfZenJ2O330aBsf7JfSUXmQ=
 golang.org/x/time v0.0.0-20190308202827-9d24e82272b4/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20190114222345-bf090417da8b/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
