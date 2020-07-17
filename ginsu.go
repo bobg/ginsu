@@ -1,7 +1,5 @@
 // Command ginsu is a Gmail INSerter for U.
-// It accepts an e-mail message on standard input and uses the Gmail API to insert it.
-
-package main
+package ginsu
 
 import (
 	"context"
@@ -16,11 +14,71 @@ import (
 
 	"github.com/bobg/folder/v3"
 	"github.com/bobg/oauther/v3"
+	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
+
+func Message(ctx context.Context, gmailSvc *gmail.Service, r io.Reader, isInsert bool) error {
+	type doer interface {
+		Do(opts ...googleapi.CallOption) (*gmail.Message, error)
+	}
+
+	msgBytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		return errors.Wrap(err, "reading input")
+	}
+	inp := &gmail.Message{
+		Raw:      base64.URLEncoding.EncodeToString(inp),
+		LabelIds: []string{"INBOX", "UNREAD"},
+	}
+
+	mSvc := gmailSvc.Users.Messages
+	if isInsert {
+		call := mSvc.Insert("me", inp)
+		call.InternalDateSource("dateHeader")
+		doer = call
+	} else {
+		call := mSvc.Import("me", inp)
+		call.InternalDateSource("dateHeader")
+		doer = call
+	}
+
+	msg, err := doer.Do()
+	if err != nil {
+		return errors.Wrap(err, "adding message")
+	}
+
+	log.Printf("new message ID %s", msg.Id)
+	return nil
+}
+
+func Folder(ctx context.Context, gmailSvc *gmail.Service, name string, isInsert bool) error {
+	f, err := folder.Open(name)
+	if err != nil {
+		return errors.Wrapf(err, "opening folder %s", name)
+	}
+	defer f.Close()
+
+	for {
+		msg, err := f.Message()
+		if err != nil {
+			return errors.Wrap(err, "reading message from folder")
+		}
+		if msg == nil {
+			return nil
+		}
+		err = func() error {
+			defer msg.Close()
+			return Message(ctx, gmailSvc, msg, isInsert)
+		}()
+		if err != nil {
+			return errors.Wrap(err, "handling message from folder")
+		}
+	}
+}
 
 type doer interface {
 	Do(opts ...googleapi.CallOption) (*gmail.Message, error)
