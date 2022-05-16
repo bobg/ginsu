@@ -1,14 +1,17 @@
 // Command ginsu is a Gmail INSerter for U.
-// It accepts an e-mail message on standard input and uses the Gmail API to insert it.
-
+// It accepts an e-mail message on standard input
+// and uses the Gmail API to "insert" or "import" it.
+// Alternatively, it reads the names of mail folders from the command line,
+// parses messages out of those,
+// and inserts or imports them.
 package main
 
 import (
 	"context"
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -16,6 +19,9 @@ import (
 
 	"github.com/bobg/folder/v3"
 	"github.com/bobg/oauther/v3"
+	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
@@ -27,19 +33,33 @@ type doer interface {
 }
 
 func main() {
-	ctx := context.Background()
-
 	var (
+		code      = flag.String("code", "", "auth code")
+		credsFile = flag.String("creds", "creds.json", "path to credentials file")
 		doImport  = flag.Bool("import", false, "import mode (more scanning)")
 		doInsert  = flag.Bool("insert", false, "insert mode (less scanning)")
-		user      = flag.String("user", "", "Gmail user ID")
-		credsFile = flag.String("creds", "creds.json", "path to credentials file")
-		tokenFile = flag.String("token", "token.json", "token cache file")
-		code      = flag.String("code", "", "auth code")
 		ratestr   = flag.String("rate", "100ms", "rate limit in folder-parsing mode")
+		reauth    = flag.Bool("reauth", false, "reauth")
+		tokenFile = flag.String("token", "token.json", "token cache file")
+		user      = flag.String("user", "", "Gmail user ID")
 	)
 
 	flag.Parse()
+
+	creds, err := os.ReadFile(*credsFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	if *reauth {
+		err = doReauth(ctx, creds, *tokenFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	if *doImport && *doInsert {
 		log.Fatal("specify only one of -import and -insert")
@@ -51,14 +71,10 @@ func main() {
 		log.Fatal("supply a username with -user")
 	}
 
-	creds, err := ioutil.ReadFile(*credsFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	oauthClient, err := oauther.Client(ctx, *tokenFile, *code, creds, gmail.GmailInsertScope)
-	if c, ok := err.(oauther.ErrNeedAuthCode); ok {
-		log.Fatalf("get auth code from %s, then rerun %s -code <code>", c.URL, strings.Join(os.Args, " "))
+	var cerr oauther.ErrNeedAuthCode
+	if errors.As(err, &cerr) {
+		log.Fatalf("Get auth code from %s, then rerun %s -code <code>", cerr.URL, strings.Join(os.Args, " "))
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +88,7 @@ func main() {
 	msvc := gmail.NewUsersMessagesService(svc)
 
 	handlemsg := func(r io.Reader) {
-		inp, err := ioutil.ReadAll(r)
+		inp, err := io.ReadAll(r)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -137,4 +153,23 @@ func main() {
 	} else {
 		handlemsg(os.Stdin)
 	}
+}
+
+func doReauth(ctx context.Context, creds []byte, tokenFile string) error {
+	conf, err := google.ConfigFromJSON(creds, gmail.GmailInsertScope)
+	if err != nil {
+		return errors.Wrap(err, "getting config from creds")
+	}
+
+	fmt.Printf("Go to: %s\nand enter the auth code you get: ", conf.AuthCodeURL("state-token", oauth2.AccessTypeOffline))
+	var code string
+	n, err := fmt.Scanln(&code)
+	if err != nil {
+		return errors.Wrap(err, "reading code from stdin")
+	}
+	if n != 1 {
+		return fmt.Errorf("read %d values from stdin, want 1", n)
+	}
+	_, err = oauther.Token(ctx, tokenFile, code, creds, gmail.GmailInsertScope)
+	return errors.Wrap(err, "getting OAuth token")
 }

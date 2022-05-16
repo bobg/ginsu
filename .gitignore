@@ -1,5 +1,4 @@
 *~
-creds.json
-token.json
-ginsu
-
+/creds.json
+/token.json
+/ginsu
