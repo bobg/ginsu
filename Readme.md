@@ -31,6 +31,16 @@ ginsu -reauth
 ```
 
 This will show a URL where you must go to get an authorization code.
+You will be asked to permit the application called “IMAP fetcher” to have access to your Gmail account.
+This is the name of the Google Cloud Platform project to which Ginsu belongs.
+
+You’ll see a warning screen explaining that Google has not verified this application.
+Click “Advanced,” then “Go to IMAP fetcher (unsafe),”
+if you trust me and this application.
+On the next screen you’ll see “IMAP fetcher wants access to your Google Account”
+and “When you allow this access, IMAP fetcher will be able to add emails into your Gmail mailbox.”
+Click “Continue” to get an authorization code.
+
 Once you have the code, enter it where prompted to create the file `token.json`.
 
 Now you may insert email messages to the Inbox in your Gmail account.
@@ -55,3 +65,9 @@ To insert one or more folders full of email messages, run:
 ```sh
 ginsu -user my.address@gmail.com [-import | -insert] FOLDER ...
 ```
+
+Other command-line options:
+
+    -creds FILE  Use the named JSON credentials file instead of “creds.json”
+    -token FILE  Use the named file for storing the OAuth token instead of “token.json”
+    -rate  DUR   When inserting multiple messages, do no more than one insertion each DUR (default: 100ms).
