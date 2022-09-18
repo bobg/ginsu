@@ -41,6 +41,11 @@ On the next screen you’ll see “IMAP fetcher wants access to your Google Acco
 and “When you allow this access, IMAP fetcher will be able to add emails into your Gmail mailbox.”
 Click “Continue” to get an authorization code.
 
+(Why is the app not verified?
+It costs [beaucoup bucks](https://support.google.com/cloud/answer/9110914?hl=en#sec-assess&zippy=%2Csecurity-assessment) to get it verified,
+since [it uses a “restricted scope”](https://github.com/bobg/ginsu/blob/db0051cda1356792ce935fbbf6c114987ecfe843/ginsu.go#L74)
+that requires a third-party security verification.)
+
 Once you have the code, enter it where prompted to create the file `token.json`.
 
 Now you may insert email messages to the Inbox in your Gmail account.
