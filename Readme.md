@@ -19,6 +19,8 @@ Be sure that directory appears in your `$PATH`.
 
 ## Usage
 
+**Note: this section is outdated since Google has deprecated the “out-of-band” OAuth flow.**
+
 You’ll need OAuth credentials in JSON format that allow Ginsu access to your Gmail account.
 For information on how to obtain those, see
 [Using OAuth 2.0 to Access Google APIs](https://developers.google.com/identity/protocols/oauth2).

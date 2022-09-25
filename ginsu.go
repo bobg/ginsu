@@ -14,14 +14,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/bobg/folder/v3"
-	"github.com/bobg/oauther/v3"
-	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	"github.com/bobg/oauther/v4"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
@@ -34,50 +30,44 @@ type doer interface {
 
 func main() {
 	var (
-		code      = flag.String("code", "", "auth code")
-		credsFile = flag.String("creds", "creds.json", "path to credentials file")
-		doImport  = flag.Bool("import", false, "import mode (more scanning)")
-		doInsert  = flag.Bool("insert", false, "insert mode (less scanning)")
-		ratestr   = flag.String("rate", "100ms", "rate limit in folder-parsing mode")
-		reauth    = flag.Bool("reauth", false, "reauth")
-		tokenFile = flag.String("token", "token.json", "token cache file")
-		user      = flag.String("user", "", "Gmail user ID")
+		credsfile, tokenfile string
+		user, ratestr        string
+		mode                 string // "import", "insert", "auth"
 	)
+	flag.StringVar(&credsfile, "creds", "creds.json", "path to credentials file")
+	flag.StringVar(&mode, "mode", "", "mode (import, insert, or auth)")
+	flag.StringVar(&ratestr, "rate", "100ms", "rate limit in folder-parsing mode")
+	flag.StringVar(&tokenfile, "token", "token.json", "token cache file")
+	flag.StringVar(&user, "user", "", "Gmail user ID")
 
 	flag.Parse()
 
-	creds, err := os.ReadFile(*credsFile)
+	creds, err := os.ReadFile(credsfile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	ctx := context.Background()
 
-	if *reauth {
-		err = doReauth(ctx, creds, *tokenFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return
+	switch mode {
+	case "import", "insert", "auth":
+		// do nothing
+	default:
+		log.Fatal("Must specify -mode, one of import, insert, or auth")
 	}
 
-	if *doImport && *doInsert {
-		log.Fatal("specify only one of -import and -insert")
-	}
-	if !*doImport && !*doInsert {
-		log.Fatal("specify one of -import and -insert")
-	}
-	if *user == "" {
-		log.Fatal("supply a username with -user")
+	if user == "" {
+		log.Fatal("Must supply a username with -user")
 	}
 
-	oauthClient, err := oauther.Client(ctx, *tokenFile, *code, creds, gmail.GmailInsertScope)
-	var cerr oauther.ErrNeedAuthCode
-	if errors.As(err, &cerr) {
-		log.Fatalf("Get auth code from %s, then rerun %s -code <code>", cerr.URL, strings.Join(os.Args, " "))
-	}
+	oauthClient, err := oauther.Client(ctx, tokenfile, creds, gmail.GmailInsertScope)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if mode == "auth" {
+		fmt.Println("Auth done")
+		return
 	}
 
 	svc, err := gmail.NewService(ctx, option.WithHTTPClient(oauthClient))
@@ -98,12 +88,12 @@ func main() {
 		}
 
 		var doer doer
-		if *doImport {
-			call := msvc.Import(*user, inpMsg)
+		if mode == "import" {
+			call := msvc.Import(user, inpMsg)
 			call.InternalDateSource("dateHeader")
 			doer = call
 		} else {
-			call := msvc.Insert(*user, inpMsg)
+			call := msvc.Insert(user, inpMsg)
 			call.InternalDateSource("dateHeader")
 			doer = call
 		}
@@ -117,7 +107,7 @@ func main() {
 	}
 
 	if flag.NArg() > 0 {
-		dur, err := time.ParseDuration(*ratestr)
+		dur, err := time.ParseDuration(ratestr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -153,23 +143,4 @@ func main() {
 	} else {
 		handlemsg(os.Stdin)
 	}
-}
-
-func doReauth(ctx context.Context, creds []byte, tokenFile string) error {
-	conf, err := google.ConfigFromJSON(creds, gmail.GmailInsertScope)
-	if err != nil {
-		return errors.Wrap(err, "getting config from creds")
-	}
-
-	fmt.Printf("Go to: %s\nand enter the auth code you get: ", conf.AuthCodeURL("state-token", oauth2.AccessTypeOffline))
-	var code string
-	n, err := fmt.Scanln(&code)
-	if err != nil {
-		return errors.Wrap(err, "reading code from stdin")
-	}
-	if n != 1 {
-		return fmt.Errorf("read %d values from stdin, want 1", n)
-	}
-	_, err = oauther.Token(ctx, tokenFile, code, creds, gmail.GmailInsertScope)
-	return errors.Wrap(err, "getting OAuth token")
 }
