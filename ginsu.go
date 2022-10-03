@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/bobg/folder/v3"
-	"github.com/bobg/oauther/v4"
+	"github.com/bobg/oauther/v5"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
