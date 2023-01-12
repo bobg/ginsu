@@ -3,78 +3,161 @@
 This is ginsu,
 a command for inserting email messages directly to a Gmail mailbox.
 
+## The problem this solves
+
+If you operate your own email server,
+but would like incoming mail to be copied to your Gmail account,
+you might naively expect that you can use email forwarding to achieve this.
+
+But as you will soon discover,
+Google will sometimes throttle your forwarded mail,
+so that messages do not show up in Gmail until many minutes later than they should.
+You may also occasionally encounter the dreaded [SMTP bounce loop](https://en.wikipedia.org/wiki/Email_loop).
+
+Both problems can be avoided by using Gmail’s API to add messages to your Gmail account,
+rather than conventional forwarding.
+This is what Ginsu helps you to do.
+
+## How it works
+
+When the `ginsu` program runs,
+it reads an email message as input
+and adds it to a specified Gmail account.
+
+You must arrange to run `ginsu` for each incoming message,
+ideally as it arrives on your email server.
+
+One good way to do this is with a “message delivery agent” like [procmail](https://en.wikipedia.org/wiki/Procmail).
+The behavior of `procmail` is controlled by a file called `.procmailrc`.
+Invoking `ginsu` from a `.procmailrc` file looks like this:
+
+```
+:0 c
+| $HOME/go/bin/ginsu -user username@gmail.com -mode import
+```
+
+Here, `:0` introduces a `procmail` mail-processing rule,
+and `c` means “operate on a copy of the message”
+(so that after this copy is sent to Ginsu,
+processing will continue with another copy,
+e.g. to place it in a local mail folder).
+
+See [Usage](#usage) below for an explanation of the `ginsu` command and its arguments.
+
 ## Installation
 
-You’ll need to have Go installed, version 1.16 or later. You can get Go at https://go.dev/dl/.
+Ginsu is written in the Go language,
+and is installed with the `go` command.
 
-Once you have Go installed, run:
+If you don’t already have `go` installed,
+version 1.16 or later,
+you can get it at [https://go.dev/dl/](https://go.dev/dl/).
+
+Once Go is installed, run:
 
 ```sh
 go install github.com/bobg/ginsu@latest
 ```
 
-This will install the `ginsu` binary to your `$GOBIN` dir,
-normally `$HOME/go/bin`.
-Be sure that directory appears in your `$PATH`.
+This will install the `ginsu` program to your `$GOBIN` dir,
+which is normally `$GOPATH/bin`,
+which is normally `$HOME/go/bin`.
 
 ## Usage
 
-**Note: this section is outdated since Google has deprecated the “out-of-band” OAuth flow.**
+To use `ginsu`,
+you must grant it permission to access your Gmail account.
+This is done with two special files:
+a “credentials” file and a “token” file.
 
-You’ll need OAuth credentials in JSON format that allow Ginsu access to your Gmail account.
-For information on how to obtain those, see
-[Using OAuth 2.0 to Access Google APIs](https://developers.google.com/identity/protocols/oauth2).
-Place them in a file named `creds.json`.
+The credentials file identifies the Ginsu program to Google.
+The token file tells Google that you’ve permitted Ginsu to access your account.
 
-Once you have those, you’ll need to use them to populate an OAuth token file. Run this command:
+### The credentials file
 
-```sh
-ginsu -reauth
-```
+To get a credentials file,
+you’ll request one from the Google Cloud console.
 
-This will show a URL where you must go to get an authorization code.
-You will be asked to permit the application called “IMAP fetcher” to have access to your Gmail account.
-This is the name of the Google Cloud Platform project to which Ginsu belongs.
+Go to [console.cloud.google.com](https://console.cloud.google.com)
+and create a “project”
+(or select a suitable one if you already have some defined).
+Then use the menu to navigate to `APIs & Services`
+and from there to `Credentials`.
 
-You’ll see a warning screen explaining that Google has not verified this application.
-Click “Advanced,” then “Go to IMAP fetcher (unsafe),”
-if you trust me and this application.
-On the next screen you’ll see “IMAP fetcher wants access to your Google Account”
-and “When you allow this access, IMAP fetcher will be able to add emails into your Gmail mailbox.”
-Click “Continue” to get an authorization code.
+Choose `Create Credentials`
+and then choose credential type `OAuth Client ID`.
+For “Application type” choose `Desktop app`.
 
-(Why is the app not verified?
-It costs [beaucoup bucks](https://support.google.com/cloud/answer/9110914?hl=en#sec-assess&zippy=%2Csecurity-assessment) to get it verified,
-since [it uses a “restricted scope”](https://github.com/bobg/ginsu/blob/db0051cda1356792ce935fbbf6c114987ecfe843/ginsu.go#L74)
-that requires a third-party security verification.)
+Once your credentials are created,
+download them in JSON format to the filename `creds.json`.
 
-Once you have the code, enter it where prompted to create the file `token.json`.
+Keep the contents of this file secret.
 
-Now you may insert email messages to the Inbox in your Gmail account.
-To insert a single message, run:
+### The token file
 
-```sh
-ginsu -user my.address@gmail.com [-import | -insert]
-```
+Once you have the `creds.json` file,
+you can get the token that authorizes Ginsu to access your Gmail account.
 
-and supply the message on the command’s standard input
-(by piping it in with `|` or redirecting from a file with `<`).
-
-You must specify one of `-import` or `-insert` to select the proper mode.
-In “import” mode, normal scanning of the incoming message
-(for filtering, and to see if it’s spam)
-is done as if it were being delivered via SMTP.
-In “insert” mode, this scanning is skipped,
-as if the message is being added with IMAP.
-
-To insert one or more folders full of email messages, run:
+Run:
 
 ```sh
-ginsu -user my.address@gmail.com [-import | -insert] FOLDER ...
+ginsu -mode auth
 ```
 
-Other command-line options:
+(If the `ginsu` command is not found,
+make sure the directory where you installed it appears in your [PATH](https://en.wikipedia.org/wiki/PATH_%28variable%29).)
 
-    -creds FILE  Use the named JSON credentials file instead of “creds.json”
-    -token FILE  Use the named file for storing the OAuth token instead of “token.json”
-    -rate  DUR   When inserting multiple messages, do no more than one insertion each DUR (default: 100ms).
+This will open a page in your web browser where you’ll be asked to log into your Google account.
+Once you do,
+you’ll see a “Google hasn’t verified this app” warning.
+Assuming you trust Ginsu,
+you can proceed by clicking `Advanced`, and then the `Go to PROJECT (unsafe)` link
+(where PROJECT is the name of the Google Cloud project
+associated with the credentials you created).
+
+The next screen tells you that “PROJECT wants access to your Google account.”
+Clicking `Continue` finishes the authorization process.
+You should now have a `ginsu-token.json` file.
+Like `ginsu-creds.json`,
+you should keep the contents of this file secret.
+
+### Command line
+
+Running Ginsu to add a message to your Gmail account looks like this:
+
+```sh
+ginsu -user ADDRESS@gmail.com -mode import
+```
+
+(where ADDRESS is your Gmail address).
+This will use the credentials in `creds.json`
+and the token in `token.json`.
+It will read an email message from its [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_%28stdin%29)
+(which you can supply by piping it in with `|`
+or redirecting from a file with `<`).
+
+The `-mode import` arguments tell Ginsu to operate in “import” mode,
+in which Gmail does its normal incoming-message processing:
+applying user-defined filters, and checking for spam.
+You could choose instead to use `-mode insert`,
+which skips this processing.
+
+If your credentials are in a file named something other than `creds.json`,
+you can add `-creds FILENAME` to tell Ginsu where to find them.
+
+If your token is in a file named something other than `token.json`,
+you can add `-token FILENAME` to tell Ginsu where to find that.
+
+Finally, if you have one or more folders full of email messages to add to Gmail
+(e.g. if you accumulate them on your email server and process them in batches,
+rather than one at a time),
+you can add the folder names to the command line,
+like this:
+
+```sh
+ginsu -user ADDRESS@gmail.com -mode import FOLDER1 FOLDER2 ...
+```
+
+In this case,
+Ginsu will read messages from those files
+rather than a single message from standard input.

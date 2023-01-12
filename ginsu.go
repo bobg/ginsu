@@ -56,7 +56,7 @@ func main() {
 		log.Fatal("Must specify -mode, one of import, insert, or auth")
 	}
 
-	if user == "" {
+	if user == "" && mode != "auth" {
 		log.Fatal("Must supply a username with -user")
 	}
 
