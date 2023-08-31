@@ -1,4 +1,4 @@
-module ginsu
+module github.com/bobg/ginsu
 
 go 1.16
 
