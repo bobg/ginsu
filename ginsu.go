@@ -18,6 +18,7 @@ import (
 
 	"github.com/bobg/folder/v3"
 	"github.com/bobg/oauther/v5"
+	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/googleapi"
@@ -31,12 +32,13 @@ type doer interface {
 func main() {
 	var (
 		credsfile, tokenfile string
-		user, ratestr        string
+		user                 string
 		mode                 string // "import", "insert", "auth"
+		rate                 time.Duration
 	)
 	flag.StringVar(&credsfile, "creds", "creds.json", "path to credentials file")
 	flag.StringVar(&mode, "mode", "", "mode (import, insert, or auth)")
-	flag.StringVar(&ratestr, "rate", "100ms", "rate limit in folder-parsing mode")
+	flag.DurationVar(&rate, "rate", 100*time.Millisecond, "rate limit in folder-parsing mode")
 	flag.StringVar(&tokenfile, "token", "token.json", "token cache file")
 	flag.StringVar(&user, "user", "", "Gmail user ID")
 
@@ -77,70 +79,93 @@ func main() {
 
 	msvc := gmail.NewUsersMessagesService(svc)
 
-	handlemsg := func(r io.Reader) {
-		inp, err := io.ReadAll(r)
-		if err != nil {
-			log.Fatal(err)
-		}
-		inpMsg := &gmail.Message{
-			Raw:      base64.URLEncoding.EncodeToString(inp),
-			LabelIds: []string{"INBOX", "UNREAD"},
-		}
-
-		var doer doer
-		if mode == "import" {
-			call := msvc.Import(user, inpMsg)
-			call.InternalDateSource("dateHeader")
-			doer = call
-		} else {
-			call := msvc.Insert(user, inpMsg)
-			call.InternalDateSource("dateHeader")
-			doer = call
-		}
-
-		msg, err := doer.Do()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("new message ID %s", msg.Id)
+	c := controller{
+		user: user,
+		msvc: msvc,
+		mode: mode,
+		rate: rate,
 	}
 
 	if flag.NArg() > 0 {
-		dur, err := time.ParseDuration(ratestr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		limiter := rate.NewLimiter(rate.Every(dur), 1)
-
 		for _, name := range flag.Args() {
-			log.Printf("opening folder %s", name)
-			f, err := folder.Open(name)
-			if err != nil {
+			if err := c.handleFolder(ctx, name); err != nil {
 				log.Fatal(err)
 			}
-			func() {
-				defer f.Close()
-				for {
-					msg, err := f.Message()
-					if err != nil {
-						log.Fatal(err)
-					}
-					if msg == nil {
-						break
-					}
-					func() {
-						defer msg.Close()
-						err := limiter.Wait(ctx)
-						if err != nil {
-							log.Fatal(err)
-						}
-						handlemsg(msg)
-					}()
-				}
-			}()
 		}
 	} else {
-		handlemsg(os.Stdin)
+		if err := c.handleMsgContent(os.Stdin); err != nil {
+			log.Fatal(err)
+		}
 	}
+}
+
+type controller struct {
+	user string
+	msvc *gmail.UsersMessagesService
+	mode string
+	rate time.Duration
+}
+
+func (c controller) handleFolder(ctx context.Context, name string) error {
+	log.Printf("Opening folder %s", name)
+
+	limiter := rate.NewLimiter(rate.Every(c.rate), 1)
+
+	f, err := folder.Open(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for {
+		msg, err := f.Message()
+		if err != nil {
+			return err
+		}
+		if msg == nil {
+			return nil
+		}
+		if err := limiter.Wait(ctx); err != nil {
+			return err
+		}
+		if err := c.handleMsg(msg); err != nil {
+			log.Printf("Error handling message (will continue): %s", err)
+		}
+	}
+}
+
+func (c controller) handleMsg(msg io.ReadCloser) error {
+	defer msg.Close()
+
+	return c.handleMsgContent(msg)
+}
+
+func (c controller) handleMsgContent(r io.Reader) error {
+	inp, err := io.ReadAll(r)
+	if err != nil {
+		return errors.Wrap(err, "reading message")
+	}
+	inpMsg := &gmail.Message{
+		Raw:      base64.URLEncoding.EncodeToString(inp),
+		LabelIds: []string{"INBOX", "UNREAD"},
+	}
+
+	var doer doer
+	if c.mode == "import" {
+		call := c.msvc.Import(c.user, inpMsg)
+		call.InternalDateSource("dateHeader")
+		doer = call
+	} else {
+		call := c.msvc.Insert(c.user, inpMsg)
+		call.InternalDateSource("dateHeader")
+		doer = call
+	}
+
+	msg, err := doer.Do()
+	if err != nil {
+		return errors.Wrapf(err, "in %s", c.mode)
+	}
+
+	log.Printf("new message ID %s", msg.Id)
+	return nil
 }
