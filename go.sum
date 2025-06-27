@@ -13,12 +13,16 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/bobg/chanrw v1.0.0 h1:ELwUMkDlngwYaE36+PKaYbDPYxwa8I9Z+vca68au0N0=
 github.com/bobg/chanrw v1.0.0/go.mod h1:5XkzwRFot3ysCwfxy64EXarkeqS45kxaXS7JqP3L9CI=
+github.com/bobg/errors v1.1.0 h1:gsVanPzJMpZQpwY+27/GQYElZez5CuMYwiIpk2A3RGw=
+github.com/bobg/errors v1.1.0/go.mod h1:Q4775qBZpnte7EGFJqmvnlB1U4pkI1XmU3qxqdp7Zcc=
 github.com/bobg/folder/v3 v3.0.4 h1:AGf1kw3d1BAsyan6liSER6OLBsOj2mwJK8BHWeqDoLk=
 github.com/bobg/folder/v3 v3.0.4/go.mod h1:NvNOeJSVxQ9jU9Xv482VRvytwcUMO+0QdmJPIiRHU7E=
 github.com/bobg/mid v1.7.1 h1:8gppOznfELY2BNz5gAiRLHKap6t7Df2NayTgcvYU5aY=
 github.com/bobg/mid v1.7.1/go.mod h1:0XdctoS8z3lTMHzEyuHDo8vDrbvdbnBQqwPpTacYqc8=
 github.com/bobg/oauther/v5 v5.0.0 h1:l0fX0e3+YrxnYg8/FoW6eb/liUCk28yeKPHuLhvCfIg=
 github.com/bobg/oauther/v5 v5.0.0/go.mod h1:op2mnEiWQSnp6vmD6LMaaMjiUvbQquH1krjEt8r+yPU=
+github.com/bobg/subcmd/v2 v2.3.0 h1:7Pq4GUN4jYwkOguz1a64r6gyVxQpNoqegAquG9CG8wQ=
+github.com/bobg/subcmd/v2 v2.3.0/go.mod h1:fjEpI7mfn8eXEoQ7+lx+dA22sebrbrIa1VMzplZzjpE=
 github.com/bobg/uncompress v1.0.0 h1:XTPAyWHXDavJ0O6gyHGNWujhw7ouLkoxfI29WtqcfbM=
 github.com/bobg/uncompress v1.0.0/go.mod h1:TvrZB/6Ks2WnTuFrc2RY11NDlkoOxi0Pvcs+hIendbs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -35,8 +39,9 @@ github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Z
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
 github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
-github.com/google/go-cmp v0.5.1 h1:JFrFEBb2xKufg6XkJsJr+WbKb4FQlURi5RUcBveYu9k=
 github.com/google/go-cmp v0.5.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/google/go-cmp v0.5.6 h1:BKbKCqvP6I+rmFHt06ZmyQtvB8xAkWdhFyr0ZUNZcxQ=
+github.com/google/go-cmp v0.5.6/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/martian v2.1.0+incompatible/go.mod h1:9I4somxYTbIHy5NJKHRl3wXiIaQGbYVAs8BPL6v8lEs=
 github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57/go.mod h1:zfwlbNMJ+OItoe0UupaVj+oy1omPYYDuagoSzA8v9mc=
 github.com/google/pprof v0.0.0-20190515194954-54271f7e092f/go.mod h1:zfwlbNMJ+OItoe0UupaVj+oy1omPYYDuagoSzA8v9mc=
