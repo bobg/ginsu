@@ -54,11 +54,11 @@ func newServer(ctx context.Context, addr, configdir string) (*server, error) {
 			Handler: mux,
 		},
 		configdir: configdir,
-		latest:    make(map[string]time.Time),
+		info:      make(map[string]*userInfo),
 	}
 
 	mux.Handle("POST /add", mid.JSON(s.addHandler))
-	mux.Handle("GET /latest", mid.JSON(s.latestHandler))
+	mux.Handle("GET /info", mid.JSON(s.infoHandler))
 	// mux.Handle("/auth", mid.Err(s.authHandler))
 	mux.Handle("/healthz", mid.Err(s.healthzHandler))
 
@@ -69,8 +69,15 @@ type server struct {
 	*http.Server
 	configdir string
 
-	mu     sync.Mutex // protects the following
-	latest map[string]time.Time
+	mu   sync.Mutex // protects the following
+	info map[string]*userInfo
+}
+
+type userInfo struct {
+	latestSuccess time.Time // last successful delivery
+	latestFailure time.Time // last failed delivery
+	numSuccesses  int
+	numFailures   int
 }
 
 func (*server) healthzHandler(w http.ResponseWriter, _ *http.Request) error {
@@ -89,7 +96,29 @@ type addResponse struct {
 	MessageID string `json:"message_id"`
 }
 
-func (s *server) addHandler(ctx context.Context, addReq *addRequest) (*addResponse, error) {
+func (s *server) addHandler(ctx context.Context, addReq *addRequest) (_ *addResponse, err error) {
+	defer func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		now := time.Now()
+
+		inf, ok := s.info[addReq.User]
+		if !ok {
+			inf = &userInfo{}
+			s.info[addReq.User] = inf
+		}
+
+		if err == nil {
+			inf.latestSuccess = now
+			inf.numSuccesses++
+		} else {
+			inf.latestFailure = now
+			inf.numFailures++
+			log.Printf("Error adding message for user %s: %s", addReq.User, err)
+		}
+	}()
+
 	keyfile := filepath.Join(s.configdir, addReq.User, "pubkey")
 	pubkey, err := os.ReadFile(keyfile)
 	if err != nil {
@@ -114,10 +143,6 @@ func (s *server) addHandler(ctx context.Context, addReq *addRequest) (*addRespon
 		return nil, errors.Wrap(err, "handling message content")
 	}
 
-	s.mu.Lock()
-	s.latest[addReq.User] = time.Now()
-	s.mu.Unlock()
-
 	log.Printf("Added message with ID %s for user %s", msgID, addReq.User)
 
 	resp := &addResponse{
@@ -126,9 +151,33 @@ func (s *server) addHandler(ctx context.Context, addReq *addRequest) (*addRespon
 	return resp, nil
 }
 
-func (s *server) latestHandler() (map[string]time.Time, error) {
+type jinfo struct {
+	LatestSuccess string `json:"latest_success,omitempty"`
+	LatestFailure string `json:"latest_failure,omitempty"`
+	NumSuccesses  int    `json:"num_successes"`
+	NumFailures   int    `json:"num_failures"`
+}
+
+func (s *server) infoHandler() map[string]jinfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.latest, nil
+	var (
+		now    = time.Now()
+		jinfos = make(map[string]jinfo, len(s.info))
+	)
+	for user, inf := range s.info {
+		j := jinfo{
+			NumSuccesses: inf.numSuccesses,
+			NumFailures:  inf.numFailures,
+		}
+		if !inf.latestSuccess.IsZero() {
+			j.LatestSuccess = now.Sub(inf.latestSuccess).Round(time.Second).String() + " ago"
+		}
+		if !inf.latestFailure.IsZero() {
+			j.LatestFailure = now.Sub(inf.latestFailure).Round(time.Second).String() + " ago"
+		}
+		jinfos[user] = j
+	}
+	return jinfos
 }
