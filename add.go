@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -23,7 +27,68 @@ func (maincmd) doAdd(ctx context.Context, fast bool, credsfile, tokenfile, user 
 		return errors.Wrap(err, "creating controller")
 	}
 
-	return con.handleMsgContent(ctx, os.Stdin)
+	msgID, err := con.handleMsgContent(ctx, os.Stdin)
+	if err != nil {
+		return errors.Wrap(err, "handling message content")
+	}
+
+	log.Printf("New message ID %s", msgID)
+
+	return nil
+}
+
+func (maincmd) doAddClient(ctx context.Context, fast bool, privkeyFile, addURL, user string, _ []string) error {
+	privkey, err := os.ReadFile(privkeyFile)
+	if err != nil {
+		return errors.Wrapf(err, "reading private key file %s", privkeyFile)
+	}
+
+	msg, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return errors.Wrap(err, "reading message from stdin")
+	}
+
+	sig := ed25519.Sign(privkey, msg)
+
+	addReq := &addRequest{
+		User:      user,
+		Message:   msg,
+		Signature: sig,
+		Fast:      fast,
+	}
+
+	jreq, err := json.Marshal(addReq)
+	if err != nil {
+		return errors.Wrap(err, "marshalling request")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addURL, bytes.NewReader(jreq))
+	if err != nil {
+		return errors.Wrap(err, "creating request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var cl http.Client
+	resp, err := cl.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "making request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code %d from %s", resp.StatusCode, addURL)
+	}
+
+	var (
+		addResp addResponse
+		dec     = json.NewDecoder(resp.Body)
+	)
+	if err := dec.Decode(&addResp); err != nil {
+		return errors.Wrap(err, "decoding response")
+	}
+
+	log.Printf("Added message with ID %s", addResp.MessageID)
+	return nil
 }
 
 func (maincmd) doAddFrom(ctx context.Context, fast bool, rateDur time.Duration, credsfile, tokenfile, user string, args []string) error {
@@ -104,13 +169,20 @@ func (c *controller) handleFolder(ctx context.Context, name string) error {
 func (c *controller) handleMsg(ctx context.Context, msg io.ReadCloser) error {
 	defer msg.Close()
 
-	return c.handleMsgContent(ctx, msg)
+	msgID, err := c.handleMsgContent(ctx, msg)
+	if err != nil {
+		return errors.Wrap(err, "handling message content")
+	}
+
+	log.Printf("Added message with ID %s", msgID)
+
+	return nil
 }
 
-func (c *controller) handleMsgContent(ctx context.Context, r io.Reader) error {
+func (c *controller) handleMsgContent(ctx context.Context, r io.Reader) (string, error) {
 	inp, err := io.ReadAll(r)
 	if err != nil {
-		return errors.Wrap(err, "reading message")
+		return "", errors.Wrap(err, "reading message")
 	}
 	inpMsg := &gmail.Message{
 		Raw:      base64.URLEncoding.EncodeToString(inp),
@@ -132,11 +204,10 @@ func (c *controller) handleMsgContent(ctx context.Context, r io.Reader) error {
 
 	msg, err := doer.Do()
 	if err != nil {
-		return errors.Wrap(err, "adding message")
+		return "", errors.Wrap(err, "adding message")
 	}
 
-	log.Printf("new message ID %s", msg.Id)
-	return nil
+	return msg.Id, nil
 }
 
 type doer interface {

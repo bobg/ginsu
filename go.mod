@@ -1,6 +1,6 @@
 module github.com/bobg/ginsu
 
-go 1.21
+go 1.23.0
 
 toolchain go1.24.2
 
@@ -9,7 +9,7 @@ require (
 	github.com/bobg/folder/v3 v3.0.4
 	github.com/bobg/oauther/v5 v5.0.0
 	github.com/bobg/subcmd/v2 v2.3.0
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/time v0.12.0
 	google.golang.org/api v0.10.0
 )
 

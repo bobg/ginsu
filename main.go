@@ -8,22 +8,11 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
-	"flag"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"time"
 
-	"github.com/bobg/errors"
-	"github.com/bobg/folder/v3"
-	"github.com/bobg/oauther/v5"
 	"github.com/bobg/subcmd/v2"
-	"golang.org/x/time/rate"
-	"google.golang.org/api/gmail/v1"
-	"google.golang.org/api/googleapi"
-	"google.golang.org/api/option"
 )
 
 func main() {
@@ -49,6 +38,12 @@ func (c maincmd) Subcmds() subcmd.Map {
 			"-token", subcmd.String, "token.json", "token cache file",
 			"-user", subcmd.String, "", "Gmail user ID",
 		),
+		"add-client", c.doAddClient, "ask a Ginsu server to add a message to Gmail", subcmd.Params(
+			"-fast", subcmd.Bool, false, "use fast insert mode (skips filtering)",
+			"-privkey", subcmd.String, "privkey", "path to private ED25519 key file",
+			"-url", subcmd.String, "http://localhost:7949/add", "URL of Ginsu server add endpoint",
+			"-user", subcmd.String, "", "Gmail user ID",
+		),
 		"add-from", c.doAddFrom, "add messages from one or more folders to Gmail", subcmd.Params(
 			"-fast", subcmd.Bool, false, "use fast insert mode (skips filtering)",
 			"-rate", subcmd.Duration, 100*time.Millisecond, "rate limit",
@@ -62,7 +57,7 @@ func (c maincmd) Subcmds() subcmd.Map {
 		),
 		"serve", c.doServe, "run as server", subcmd.Params(
 			"-addr", subcmd.String, ":7949", "address to listen on",
-			"-config", subcmd.String, "config.yaml", "path to configuration file",
+			"-dir", subcmd.String, "config.d", "configuration directory",
 		),
 	)
 }
