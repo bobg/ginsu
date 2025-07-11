@@ -7,7 +7,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -213,15 +213,9 @@ func (s *server) infoHandler() map[string]jinfo {
 	return jinfos
 }
 
-//go:embed auth.html
-var authHTML []byte
-
 func authHandler(w http.ResponseWriter, req *http.Request) {
-	http.ServeContent(w, req, "auth.html", time.Time{}, bytes.NewReader(authHTML))
+	http.ServeFileFS(w, req, templates, "templates/auth.html")
 }
-
-//go:embed auth2.html
-var auth2HTML []byte
 
 func (s *server) auth2Handler(w http.ResponseWriter, req *http.Request) error {
 	addr := req.FormValue("addr")
@@ -231,7 +225,7 @@ func (s *server) auth2Handler(w http.ResponseWriter, req *http.Request) error {
 		return mid.CodeErr{C: http.StatusBadRequest}
 	}
 
-	http.ServeContent(w, req, "auth2.html", time.Time{}, bytes.NewReader(auth2HTML))
+	http.ServeFileFS(w, req, templates, "templates/auth2.html")
 
 	userDir := filepath.Join(s.configdir, addr)
 	_, err := os.Stat(userDir)
@@ -322,14 +316,9 @@ func (s *server) auth2Handler(w http.ResponseWriter, req *http.Request) error {
 		Addr: addr,
 		Link: fmt.Sprintf("https://%s/auth3?%s", s.Addr, v.Encode()),
 	}
-	tmpl, err := template.New("authmail").Parse(authMailTmpl)
-	if err != nil {
-		log.Printf("Error parsing auth mail template: %s", err)
-		return nil
-	}
 
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
+	if err := authMailTmpl.Execute(&buf, data); err != nil {
 		log.Printf("Error executing auth mail template: %s", err)
 		return nil
 	}
@@ -343,11 +332,7 @@ func (s *server) auth2Handler(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-//go:embed authmail.tmpl
-var authMailTmpl string
-
-//go:embed auth3.html
-var auth3HTML []byte
+var authMailTmpl = template.Must(template.ParseFS(templates, "templates/authmail.tmpl"))
 
 const (
 	secretBytes    = 32
@@ -436,7 +421,10 @@ func (s *server) auth3Handler(w http.ResponseWriter, req *http.Request) error {
 		return errors.Wrap(err, "authenticating")
 	}
 
-	http.ServeContent(w, req, "auth3.html", time.Time{}, bytes.NewReader(auth3HTML))
+	http.ServeFileFS(w, req, templates, "templates/auth3.html")
 
 	return nil
 }
+
+//go:embed templates
+var templates embed.FS
