@@ -47,6 +47,7 @@ func (maincmd) doServe(ctx context.Context, addr, configdir string, _ []string) 
 	go func() {
 		listenAndServeErr = s.ListenAndServe()
 		if errors.Is(listenAndServeErr, http.ErrServerClosed) {
+			log.Printf("Server closed")
 			listenAndServeErr = nil
 		}
 	}()
