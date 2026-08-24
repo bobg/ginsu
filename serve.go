@@ -79,7 +79,7 @@ func newServer(ctx context.Context, addr, configdir string) (*server, error) {
 		configdir: configdir,
 		info:      make(map[string]*userInfo),
 
-		smtpHost: host,
+		smtpHost: host+":smtp",
 		smtpFrom: fmt.Sprintf("Ginsu <noreply@%s>", host),
 		smtpAuth: nil,
 	}
@@ -317,6 +317,8 @@ func (s *server) auth2Handler(w http.ResponseWriter, req *http.Request) error {
 		Addr: addr,
 		Link: fmt.Sprintf("https://%s/auth3?%s", s.Addr, v.Encode()),
 	}
+
+	log.Printf("Sending link message with addr %s, link %s", data.Addr, data.Link)
 
 	var buf bytes.Buffer
 	if err := authMailTmpl.Execute(&buf, data); err != nil {
