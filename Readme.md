@@ -33,7 +33,7 @@ Invoking `ginsu` from a `.procmailrc` file looks like this:
 
 ```
 :0 c
-| $HOME/go/bin/ginsu -user username@gmail.com -mode import
+| $HOME/go/bin/ginsu add -user username@gmail.com
 ```
 
 Here, `:0` introduces a `procmail` mail-processing rule,
@@ -50,7 +50,7 @@ Ginsu is written in the Go language,
 and is installed with the `go` command.
 
 If you don’t already have `go` installed,
-version 1.16 or later,
+version 1.26 or later,
 you can get it at [https://go.dev/dl/](https://go.dev/dl/).
 
 Once Go is installed, run:
@@ -101,7 +101,7 @@ you can get the token that authorizes Ginsu to access your Gmail account.
 Run:
 
 ```sh
-ginsu -mode auth
+ginsu auth
 ```
 
 (If the `ginsu` command is not found,
@@ -117,8 +117,8 @@ associated with the credentials you created).
 
 The next screen tells you that “PROJECT wants access to your Google account.”
 Clicking `Continue` finishes the authorization process.
-You should now have a `ginsu-token.json` file.
-Like `ginsu-creds.json`,
+You should now have a `token.json` file.
+Like `creds.json`,
 you should keep the contents of this file secret.
 
 ### Command line
@@ -126,7 +126,7 @@ you should keep the contents of this file secret.
 Running Ginsu to add a message to your Gmail account looks like this:
 
 ```sh
-ginsu -user ADDRESS@gmail.com -mode import
+ginsu add -user ADDRESS@gmail.com
 ```
 
 (where ADDRESS is your Gmail address).
@@ -135,12 +135,6 @@ and the token in `token.json`.
 It will read an email message from its [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_%28stdin%29)
 (which you can supply by piping it in with `|`
 or redirecting from a file with `<`).
-
-The `-mode import` arguments tell Ginsu to operate in “import” mode,
-in which Gmail does its normal incoming-message processing:
-applying user-defined filters, and checking for spam.
-You could choose instead to use `-mode insert`,
-which skips this processing.
 
 If your credentials are in a file named something other than `creds.json`,
 you can add `-creds FILENAME` to tell Ginsu where to find them.
@@ -151,13 +145,55 @@ you can add `-token FILENAME` to tell Ginsu where to find that.
 Finally, if you have one or more folders full of email messages to add to Gmail
 (e.g. if you accumulate them on your email server and process them in batches,
 rather than one at a time),
-you can add the folder names to the command line,
-like this:
+you can add the contents of those folders like this:
 
 ```sh
-ginsu -user ADDRESS@gmail.com -mode import FOLDER1 FOLDER2 ...
+ginsu add-from -user ADDRESS@gmail.com FOLDER1 FOLDER2 ...
 ```
 
-In this case,
-Ginsu will read messages from those files
-rather than a single message from standard input.
+Here is the complete set of subcommands understood by Ginsu,
+and their arguments,
+with explanations below.
+
+| Command          | Arguments                                                                       | Description                                                                        |
+|------------------|---------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| ginsu add        | -user NAME@gmail.com [-fast] [-creds CREDSFILE] [-token TOKENFILE]              | Add a message from stdin to the NAME@gmail.com account.                            |
+| ginsu add-client | -user NAME@gmail.com [-fast] [-privkey PRIVKEYFILE] [-url SERVER]               | Use a Ginsu server to add a message from stdin to the NAME@gmail.com account.      |
+| ginsu add-from   | -user NAME@gmail.com [-fast] [-rate RATE] [-creds CREDSFILE] [-token TOKENFILE] | Add messages from folders named on the command line to the NAME@gmail.com account. |
+| ginsu auth       | [-creds CREDSFILE] [-token TOKENFILE]                                           | Create or update the Ginsu authentication token.                                   |
+| ginsu serve      | [-addr LISTEN] [-dir DIR]                                                       | Start a Ginsu server.                                                              |
+
+The `-fast` flag means to skip the usual processing (such as spam filtering) when adding a message to Gmail.
+
+CREDSFILE defaults to `creds.json`.
+
+TOKENFILE defaults to `token.json`.
+
+PRIVKEYFILE defaults to `privkey`.
+It must contain an ED25519 private key.
+The matching public key goes into the server config (see below).
+You can create an ed25519 private/public keypair like this:
+
+```sh
+go install github.com/bobg/txvm/cmd/ed25519@latest
+ed25519 gen > privkey
+ed25519 pub < privkey > pubkey
+```
+
+SERVER is the URL of a Ginsu server “add” endpoint.
+It defaults to `http://localhost:7949/add`.
+
+RATE is the rate at which messages should be added from a folder to Gmail,
+expressed as a time delay between additions.
+The default is 100ms.
+
+LISTEN is the listen address of the server.
+It defaults to `localhost:7949`.
+
+DIR is the path of the directory containing the server config.
+It defaults to `config.d`.
+See details below.
+
+### Running a Ginsu server
+
+TBD
