@@ -70,6 +70,10 @@ func newServer(ctx context.Context, addr, configdir string) (*server, error) {
 		}
 	}
 
+	if host == "" {
+		host = "localhost"
+	}
+
 	mux := http.NewServeMux()
 	s := &server{
 		Server: &http.Server{
@@ -79,7 +83,7 @@ func newServer(ctx context.Context, addr, configdir string) (*server, error) {
 		configdir: configdir,
 		info:      make(map[string]*userInfo),
 
-		smtpHost: host+":smtp",
+		smtpHost: host + ":587",
 		smtpFrom: fmt.Sprintf("Ginsu <noreply@%s>", host),
 		smtpAuth: nil,
 	}
